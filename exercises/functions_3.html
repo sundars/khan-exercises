@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html data-require="math function_makers">
+<head>
+    <title>Functions 3</title>
+    <script src="../khan-exercise.js"></script>
+</head>
+<body>
+    <div id="vars">
+        <var id="X_NAMES">[ "x", "n", "t" ]</var>
+		<var id="FUNC_NAMES">[ "f", "g", "h" ]</var>
+
+        <var id="BASE_FUNC_NAME">randFromArray(FUNC_NAMES)</var>
+
+		<var id="USED_FUNC_NAMES">[BASE_FUNC_NAME]</var>
+		
+		<var id="BASE_FUNC">new NamedFunction( randFromArray(X_NAMES), BASE_FUNC_NAME )</var>
+		
+        <var id="FUNC_2_NAME">randFromArrayNotIn( FUNC_NAMES, USED_FUNC_NAMES )</var>
+		<var id="FUNC_2">new NamedCompositeFunction( randFromArray(X_NAMES), FUNC_2_NAME, BASE_FUNC )</var>
+
+        <var id="FUNC_3_NAME">randFromArrayNotIn( FUNC_NAMES, USED_FUNC_NAMES )</var>
+		<var id="FUNC_3">new NamedCompositeFunction( randFromArray(X_NAMES), FUNC_3_NAME, randFromArray([ BASE_FUNC, FUNC_2 ]) )</var>
+    </div>
+
+    <div id="problems">
+        <div class="problem" id="two-functions">
+			<div class="problem">
+				<ul>
+					<li><code><var>BASE_FUNC_NAME</var>(<var>BASE_FUNC.variable</var>) = <var>BASE_FUNC.text</var></code></li>
+					<li><code><var>FUNC_2_NAME</var>(<var>FUNC_2.variable</var>) = <var>FUNC_2.text</var></code></li>
+				</ul>
+			</div>
+            <p class="question"><var>A</var> + <var>B</var> = ?</p>
+            <div class="solution"><var>A + B</var></div>
+        </div>
+        
+        <div class="problem" id="three-functions" data-type="two-functions">
+            <p class="question"><var>A</var> - <var>B</var> = ?</p>
+            <div class="solution"><var>A - B</var></div>
+        </div>
+    </div>
+</body>
+</html>
