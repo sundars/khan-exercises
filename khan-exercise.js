@@ -166,6 +166,7 @@ var Khan = (function() {
 	once = true,
 
 	guessLog,
+	userActivityLog,
 
 	// For loading remote exercises
 	remoteCount = 0,
@@ -186,10 +187,11 @@ var Khan = (function() {
 		+ "the issue manually at <a href=\""
 		+ "http://github.com/Khan/khan-exercises/issues/new\">GitHub</a>. "
 		+ "Please reference exercise: " + exerciseName + ".",
-	issueSuccess = function( a, b ) {
-		return "Thank you for your feedback! Your issue has been created and can be "
-			+ "found at the following link:</p>"
-			+ "<p><a id=\"issue-link\" href=\"" + a + "\">" + b + "</a>";
+	issueSuccess = function( url, title, suggestion ) {
+		return ["Thank you for your feedback! Your issue has been created and can be ",
+			"found at the following link:",
+			"<p><a id=\"issue-link\" href=\"", url, "\">", title, "</a>",
+			"<p>", suggestion, "</p>"].join('');
 	},
 	issueIntro = "Remember to check the hints and double check your math. All provided information will be public. Thanks for your help!";
 
@@ -524,14 +526,27 @@ var Khan = (function() {
 	// Load query string params
 	Khan.query = Khan.queryString();
 
+	if ( Khan.query.activity !== undefined ) {
+		userExercise = {
+			exercise_model: {},
+			read_only: true,
+			user_activity: JSON.parse( Khan.query.activity )
+		};
+	}
+
 	// Seed the random number generator with the user's hash
 	randomSeed = testMode && parseFloat( Khan.query.seed ) || userCRC32 || ( new Date().getTime() & 0xffffffff );
+
 
 	// Load in jQuery
 	var scripts = (typeof jQuery !== "undefined") ? [] : [ { src: "../jquery.js" } ];
 
 	// Actually load the scripts. This is getting evaluated when the file is loaded.
 	Khan.loadScripts( scripts, function() {
+
+		if ( testMode ) {
+			Khan.require( [ "../jquery-ui" ] );
+		};
 
 		// Base modules required for every problem
 		Khan.require( [ "answer-types", "tmpl", "underscore" ] );
@@ -850,6 +865,7 @@ var Khan = (function() {
 		// (this includes possibly generating the multiple choice problems,
 		// if this fails then we will need to try generating another one.)
 		guessLog = [];
+		userActivityLog = [];
 		validator = Khan.answerTypes[answerType]( solutionarea, solution );
 
 		// A working solution was generated
@@ -1035,9 +1051,10 @@ var Khan = (function() {
 							}
 						} else {
 							var thisValidator = Khan.answerTypes[answerType]( thissolutionarea, solution );
+
 							thisValidator.showGuess( guess );
 
-							if (thisValidator()) {
+							if (thisValidator() === true) {
 								// If the user didn't get the problem right on the first try, all
 								// answers are labelled incorrect by default
 								thissolutionarea
@@ -1157,27 +1174,39 @@ var Khan = (function() {
 				}
 
 				MathJax.Hub.Queue( function() {
-					thisHintArea = realHintsArea.clone();
-					thisProblem = realWorkArea.clone();
+					var recordState = function() {
+						jQuery( "#problemarea input" ).attr({ disabled: "disabled" });
+						thisHintArea = realHintsArea.clone();
+						thisProblem = realWorkArea.clone();
 
-					var thisState = {
-						slide: thisSlide,
-						hintNum: hintNum,
-						hintArea: thisHintArea,
-						problem: thisProblem,
-						scroll: scroll
+						var thisState = {
+							slide: thisSlide,
+							hintNum: hintNum,
+							hintArea: thisHintArea,
+							problem: thisProblem,
+							scroll: scroll
+						};
+
+						statelist[i] = thisState;
+
+						if (i+1 < states.length) {
+							MathJax.Hub.Queue( function() {
+								create( i+1 );
+							} );
+						} else {
+							activate( i );
+						}
 					};
 
-					statelist[i] = thisState;
-
-					if (i+1 < states.length) {
-						MathJax.Hub.Queue( function() {
-							create( i+1 );
-						} );
+					if ( thisSlide.data( "guess" ) !== undefined && jQuery.isFunction( validator.showInteractiveGuess ) ) {
+						KhanUtil.currentGraph = jQuery( realWorkArea ).find( ".graphie" ).data( "graphie" );
+						validator.showInteractiveGuess( thisSlide.data( "guess" ) );
+						MathJax.Hub.Queue( recordState );
 					} else {
-						activate( i );
+						recordState();
 					}
-				} );
+
+				});
 			};
 
 			MathJax.Hub.Queue( function() {create(0);} );
@@ -1339,6 +1368,20 @@ var Khan = (function() {
 				.attr( "href", debugURL + "&seed=" + problemSeed )
 				.appendTo( links );
 
+
+			if ( !Khan.query.activity ) {
+				links.append("<br>");
+				var historyURL = debugURL + "&seed=" + problemSeed + "&activity=";
+				jQuery( "<a>Problem history</a>" ).attr( "href", "javascript:" ).click(function( event ) {
+					window.location.href = historyURL + encodeURIComponent( JSON.stringify( userActivityLog ) );
+				}).appendTo( links );
+			} else {
+				links.append("<br>");
+				jQuery( "<a>Random problem</a>" )
+					.attr( "href", debugURL )
+					.appendTo( links );
+			}
+
 			links.append("<br>");
 			links.append("Problem type: ");
 
@@ -1464,9 +1507,12 @@ var Khan = (function() {
 				var routes = $.map( exercises, function(exercise, i){
 
 					var state = exercise.exercise_states || { suggested:true } ;
-					var routeColor, dotColor;
 					pathState = false;
 					$.each(state, function(i,v){ pathState = (v || pathState); });
+
+					var dotColor = "#ccc";
+					var routeColor = "#ccc";
+					var accentColor = "#fff";
 
 					if(pathState){
 
@@ -1487,12 +1533,7 @@ var Khan = (function() {
 							routeColor = "rgb(244, 189, 154)";
 							accentColor = "#ccc";
 						}
-					}
 
-					else{ // greyish
-						dotColor = "#ccc";
-						routeColor = "#ccc";
-						accentColor = "#fff";
 					}
 
 					// draw nth path (paths are hand-coded, not autogenerated)
@@ -1509,7 +1550,7 @@ var Khan = (function() {
 						.attr("stroke-width",0);
 
 					// the path for the star/dot
-					starpath = "M"+(endpoint.x-3)+","+(endpoint.y-1) + star;
+					var starpath = "M"+(endpoint.x-3)+","+(endpoint.y-1) + star;
 					var dot = map.path(starpath)
 						.attr("fill", accentColor)   // the state of this exercise
 						.attr("stroke-width",0)
@@ -1612,12 +1653,24 @@ var Khan = (function() {
 			jQuery( "#extras" ).css("visibility", "hidden");
 		}
 
+		// Change form target to the current page, so that errors do not kick us
+		// back to the dashboard
+		jQuery( "#answerform" ).attr( "action", window.location.href );
+
 		// Watch for a solution submission
 		jQuery("#check-answer-button").click( handleSubmit );
 		jQuery("#answerform").submit( handleSubmit );
 
 		// Build the data to pass to the server
 		function buildAttemptData(pass, attemptNum, attemptContent, curTime) {
+			var timeTaken = Math.round((curTime - lastAction) / 1000);
+
+			if ( attemptContent !== "hint" ) {
+				userActivityLog.push([ pass ? "correct-activity" : "incorrect-activity", attemptContent, timeTaken ]);
+			} else {
+				userActivityLog.push([ "hint-activity", "0", timeTaken ]);
+			}
+
 			return {
 				// The user answered correctly
 				complete: pass === true ? 1 : 0,
@@ -1626,7 +1679,7 @@ var Khan = (function() {
 				count_hints: hintsUsed,
 
 				// How long it took them to complete the problem
-				time_taken: Math.round((curTime - lastAction) / 1000),
+				time_taken: timeTaken,
 
 				// How many times the problem was attempted
 				attempt_number: attemptNum,
@@ -1687,6 +1740,20 @@ var Khan = (function() {
 					jQuery( "#check-answer-results .check-answer-message" ).html( pass ).tmpl().show();
 				}
 
+				// Show the examples (acceptable answer formats) if available -- we get
+				// a lot of issues due to incorrect formats (eg. "3.14159" instead of
+				// "3pi", "log(2^5)" instead of "log(32)").
+				if ( window.remindAnswerFormatAbTest ) {
+					var examples = jQuery( "#examples" ),
+						examplesLink = jQuery( "#examples-show" );
+					if ( examplesLink.is( ":visible" ) ) {
+						if ( !examples.is( ":visible" ) ) {
+							examplesLink.click();
+						}
+						examples.effect( "pulsate", { times: 1 }, "slow" );
+					}
+				}
+
 				// Refocus text field so user can type a new answer
 				if ( lastFocusedSolutionInput != null ) {
 					setTimeout( function() {
@@ -1737,12 +1804,21 @@ var Khan = (function() {
 						.focus();
 				}
 				nextProblem( 1 );
+
+				// Bingo if user completed problem after a wrong try
+				if ( attempts > 1 && typeof window.remindAnswerFormatAbTest !== "undefined" ) {
+					gae_bingo.bingo( "remind_correct_after_wrong" );
+				}
 			} else {
 				// Wrong answer. Enable all the input elements, but wait until
 				// until server acknowledges before enabling the check answer
 				// button.
 				jQuery( "#answercontent input" ).not( "#check-answer-button, #hint" )
 					.removeAttr( "disabled" );
+
+				if ( attempts === 1 && typeof window.remindAnswerFormatAbTest !== "undefined" ) {
+					gae_bingo.bingo( "remind_first_attempt_wrong" );
+				}
 			}
 
 			// Remember when the last action was
@@ -1906,18 +1982,20 @@ var Khan = (function() {
 			if ( jQuery( "#issue form" ).css( "display" ) === "none" ) return;
 
 			var pretitle = jQuery( ".exercise-title" ).text() || jQuery( "title" ).text().replace(/ \|.*/, ''),
+				type = jQuery( "input[name=issue-type]:checked" ).prop( "id" ),
 				title = jQuery( "#issue-title" ).val(),
 				email = jQuery( "#issue-email" ).val(),
 				path = exerciseName + ".html"
 					+ "?seed=" + problemSeed
 					+ "&problem=" + problemID,
 				pathlink = "[" + path + ( exercise.data( "name" ) != null && exercise.data( "name" ) !== exerciseName ? " (" + exercise.data( "name" ) + ")" : "" ) + "](http://sandcastle.khanacademy.org/media/castles/Khan:master/exercises/" + path + "&debug)",
+				historyLink = "[Answer timeline](" + "http://sandcastle.khanacademy.org/media/castles/Khan:master/exercises/" + path + "&debug&activity=" + encodeURIComponent( JSON.stringify( userActivityLog ) ) + ")",
 				agent = navigator.userAgent,
 				mathjaxInfo = "MathJax is " + ( typeof MathJax === "undefined" ? "NOT loaded" :
 					( "loaded, " + ( MathJax.isReady ? "" : "NOT ") + "ready, queue length: " + MathJax.Hub.queue.queue.length ) ),
 				localStorageInfo = ( typeof localStorage === "undefined" || typeof localStorage.getItem === "undefined" ? "localStorage NOT enabled" : null ),
 				warningInfo = jQuery( "#warning-bar-content" ).text(),
-				parts = [ email ? "Reporter: " + email : null, jQuery( "#issue-body" ).val() || null, pathlink, "    " + JSON.stringify( guessLog ), agent, localStorageInfo, mathjaxInfo, warningInfo ],
+				parts = [ email ? "Reporter: " + email : null, jQuery( "#issue-body" ).val() || null, pathlink, historyLink, "    " + JSON.stringify( guessLog ), agent, localStorageInfo, mathjaxInfo, warningInfo ],
 				body = jQuery.grep( parts, function( e ) { return e != null; } ).join( "\n\n" );
 
 			var mathjaxLoadFailures = jQuery.map( MathJax.Ajax.loading, function( info, script ) {
@@ -1953,6 +2031,24 @@ var Khan = (function() {
 			jQuery.each( flags, function( k, v ) {
 				if ( v ) labels.push( k );
 			});
+
+			if ( !type ) {
+				jQuery( "#issue-status" ).addClass( "error" )
+					.html( "Please specify the issue type." ).show();
+				return;
+			} else {
+				labels.push( type.slice( "issue-".length ) );
+
+				var hintOrVideoMsg = "Please click the hint button above to see our solution, or watch a video for additional help.";
+				var refreshOrBrowserMsg = "Please try a hard refresh (press Ctrl + Shift + R)" +
+						" or use Khan Academy from a different browser (such as Chrome or Firefox).";
+				var suggestion = {
+					"issue-wrong-or-unclear": hintOrVideoMsg,
+					"issue-hard": hintOrVideoMsg,
+					"issue-not-showing": refreshOrBrowserMsg,
+					"issue-other": ""
+				}[ type ];
+			}
 
 			if ( title === "" ) {
 				jQuery( "#issue-status" ).addClass( "error" )
@@ -1995,7 +2091,7 @@ var Khan = (function() {
 
 					// show status message
 					jQuery( "#issue-status" ).removeClass( "error" )
-						.html( issueSuccess( data.html_url, data.title ) )
+						.html( issueSuccess( data.html_url, data.title, suggestion ) )
 						.show();
 
 					// reset the form elements
