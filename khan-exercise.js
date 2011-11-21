@@ -1198,9 +1198,9 @@ var Khan = (function() {
 						}
 					};
 
-					if ( thisSlide.data( "guess" ) !== undefined && jQuery.isFunction( validator.showInteractiveGuess ) ) {
+					if ( thisSlide.data( "guess" ) !== undefined && jQuery.isFunction( validator.showCustomGuess ) ) {
 						KhanUtil.currentGraph = jQuery( realWorkArea ).find( ".graphie" ).data( "graphie" );
-						validator.showInteractiveGuess( thisSlide.data( "guess" ) );
+						validator.showCustomGuess( thisSlide.data( "guess" ) );
 						MathJax.Hub.Queue( recordState );
 					} else {
 						recordState();
@@ -1743,15 +1743,13 @@ var Khan = (function() {
 				// Show the examples (acceptable answer formats) if available -- we get
 				// a lot of issues due to incorrect formats (eg. "3.14159" instead of
 				// "3pi", "log(2^5)" instead of "log(32)").
-				if ( window.remindAnswerFormatAbTest ) {
-					var examples = jQuery( "#examples" ),
-						examplesLink = jQuery( "#examples-show" );
-					if ( examplesLink.is( ":visible" ) ) {
-						if ( !examples.is( ":visible" ) ) {
-							examplesLink.click();
-						}
-						examples.effect( "pulsate", { times: 1 }, "slow" );
+				var examples = jQuery( "#examples" ),
+					examplesLink = jQuery( "#examples-show" );
+				if ( examplesLink.is( ":visible" ) ) {
+					if ( !examples.is( ":visible" ) ) {
+						examplesLink.click();
 					}
+					examples.effect( "pulsate", { times: 1 }, "slow" );
 				}
 
 				// Refocus text field so user can type a new answer
@@ -1804,21 +1802,12 @@ var Khan = (function() {
 						.focus();
 				}
 				nextProblem( 1 );
-
-				// Bingo if user completed problem after a wrong try
-				if ( attempts > 1 && typeof window.remindAnswerFormatAbTest !== "undefined" ) {
-					gae_bingo.bingo( "remind_correct_after_wrong" );
-				}
 			} else {
 				// Wrong answer. Enable all the input elements, but wait until
 				// until server acknowledges before enabling the check answer
 				// button.
 				jQuery( "#answercontent input" ).not( "#check-answer-button, #hint" )
 					.removeAttr( "disabled" );
-
-				if ( attempts === 1 && typeof window.remindAnswerFormatAbTest !== "undefined" ) {
-					gae_bingo.bingo( "remind_first_attempt_wrong" );
-				}
 			}
 
 			// Remember when the last action was
@@ -1989,7 +1978,7 @@ var Khan = (function() {
 					+ "?seed=" + problemSeed
 					+ "&problem=" + problemID,
 				pathlink = "[" + path + ( exercise.data( "name" ) != null && exercise.data( "name" ) !== exerciseName ? " (" + exercise.data( "name" ) + ")" : "" ) + "](http://sandcastle.khanacademy.org/media/castles/Khan:master/exercises/" + path + "&debug)",
-				historyLink = "[Answer timeline](" + "http://sandcastle.khanacademy.org/media/castles/Khan:master/exercises/" + path + "&debug&activity=" + encodeURIComponent( JSON.stringify( userActivityLog ) ) + ")",
+				historyLink = "[Answer timeline](" + "http://sandcastle.khanacademy.org/media/castles/Khan:master/exercises/" + path + "&debug&activity=" + encodeURIComponent( JSON.stringify( userActivityLog ) ).replace( ")", "\\)" ) + ")",
 				agent = navigator.userAgent,
 				mathjaxInfo = "MathJax is " + ( typeof MathJax === "undefined" ? "NOT loaded" :
 					( "loaded, " + ( MathJax.isReady ? "" : "NOT ") + "ready, queue length: " + MathJax.Hub.queue.queue.length ) ),
@@ -2330,21 +2319,6 @@ var Khan = (function() {
 					var jel = jQuery("#exercise-message-container");
 					if (userState.template !== null) {
 						jel.empty().append(userState.template);
-
-						jQuery("#exercise-message-container a").click(function(evt){
-							var href = jQuery(this).attr("href");
-							var gotoDashboard = function(){ window.location = href; };
-
-							evt.preventDefault();
-
-							if(href.indexOf("dashboard") > -1){
-								gae_bingo.bingo("clicked_dashboard", gotoDashboard, gotoDashboard);
-							}
-						});
-
-						if(_.indexOf(userState.state, "proficient") !== -1 && userState.sees_graph){
-							drawGraph(userState.followups);
-						}
 						setTimeout(function(){ jel.slideDown(); }, 50);
 					}
 					else {
@@ -2388,25 +2362,16 @@ var Khan = (function() {
 		var icon = jQuery("#exercise-icon-container");
 		var exerciseStates = data && data.exercise_states;
 		if ( exerciseStates ){
-			for (state in exerciseStates){
-				if( exerciseStates.hasOwnProperty(state) ) {
-					if( exerciseStates[state] ) {
-						icon.addClass( state );
-					}else{
-						icon.removeClass( state );
-					}
-				}
-			}
+			var sPrefix = exerciseStates.summative ? "node-challenge" : "node";
+			var src = exerciseStates.review ? "/images/node-review.png" :
+					exerciseStates.suggested ? "/images/" + sPrefix + "-suggested.png" :
+						exerciseStates.proficient ? "/images/" + sPrefix + "-complete.png" :
+							"/images/" + sPrefix + "-not-started.png";
+			jQuery("#exercise-icon-container img").attr("src", src);
 
 			icon.addClass("hint" )
 				.click(function(){jQuery(this).toggleClass("hint");});
 
-			// this will be necessary to eventually support ie8 & friends
-			// if ( window.Raphael ) {
-			// 	// set up 30x30 rapahel canvas
-			// 	var state = Raphael("exercise-icon-container", 30, 30);
-			// // draw the state icon here
-			// }
 		}
 	};
 
@@ -2526,22 +2491,7 @@ var Khan = (function() {
 		var streakMaxWidth = jQuery(".streak-bar").width(),
 
 			// Streak and longest streak pixel widths
-			streakWidth = Math.min(Math.ceil(streakMaxWidth * data.progress), streakMaxWidth),
-			longestStreakWidth = Math.min(streakMaxWidth, Math.ceil((streakMaxWidth / data.required_streak) * data.longest_streak)),
-
-			// Streak icon pixel width
-			streakIconWidth = Math.min(streakMaxWidth - 2, Math.max(43, streakWidth)), // 43 is width of streak icon
-
-			// Don't show label if not enough room
-			labelWidthRequired = 20,
-
-			// Don't show accumulation stats higher than 100 to stop grinding behavior,
-			// and don't show labels if there isn't room in the bar to render them.
-			labelStreak = streakWidth < labelWidthRequired ? "" :
-							( !data.summative && data.streak > 100 ) ? "Max" : data.streak,
-
-			labelLongestStreak = ( longestStreakWidth < labelWidthRequired || (longestStreakWidth - streakWidth) < labelWidthRequired ) ? "" :
-							( !data.summative && data.longest_streak > 100 ) ? "Max" : data.longest_streak;
+			streakWidth = Math.min(Math.ceil(streakMaxWidth * data.progress), streakMaxWidth);
 
 		if ( data.summative ) {
 			jQuery( ".summative-help ")
@@ -2571,19 +2521,7 @@ var Khan = (function() {
 		jQuery(".streak-icon").css({width:"100%"});
 		jQuery(".streak-bar").toggleClass("proficient", data.progress >= 1.0);
 
-		// draw the exercise state icon
-		// Update the exercise icon
-		var exerciseStates = data && data.exercise_states;
-
-		if ( exerciseStates ) {
-			var sPrefix = exerciseStates.summative ? "node-challenge" : "node";
-			var src = exerciseStates.review ? "/images/node-review.png" :
-						exerciseStates.suggested ? "/images/" + sPrefix + "-suggested.png" :
-							exerciseStates.proficient ? "/images/" + sPrefix + "-complete.png" :
-								"/images/" + sPrefix + "-not-started.png";
-			jQuery("#exercise-icon-container img").attr("src", src);
-		}
-		//drawExerciseState( data );
+		drawExerciseState( data );
 
 		var videos = data && data.exercise_model.related_videos;
 		if ( videos && videos.length &&
@@ -2702,10 +2640,9 @@ var Khan = (function() {
 		var self = jQuery( this );
 		var name = self.data( "name" );
 		var weight = self.data( "weight" );
-		var dummy = jQuery( "<div>" );
 
 		remoteCount++;
-		dummy.load( urlBase + "exercises/" + name + ".html .exercise", function( data, status, xhr ) {
+		jQuery.get( urlBase + "exercises/" + name + ".html", function( data, status, xhr ) {
 			var match, newContents;
 
 			if ( !( /success|notmodified/ ).test( status ) ) {
@@ -2714,7 +2651,9 @@ var Khan = (function() {
 				return;
 			}
 
-			newContents = dummy.contents();
+			// Wrap everything in <pre> tags to keep IE from removing newlines
+			data = data.replace( /(<body[^>]*>)/, "$1<pre>" ).replace( "</body>", "</pre></body>" );
+			newContents = jQuery( data ).find( "div.exercise" );
 			self.replaceWith( newContents );
 
 			// Maybe the exercise we just loaded loads some others
@@ -2796,12 +2735,8 @@ var Khan = (function() {
 			if ( !testMode || !Khan.query.problem ) {
 				var problems = exercises.children( ".problems" ).children();
 
-				if ( typeof userExercise !== "undefined" ) {
-					problemCount = userExercise.required_streak || 10;
-				}
-
 				weighExercises( problems );
-				problemBag = makeProblemBag( problems, problemCount );
+				problemBag = makeProblemBag( problems, 10 );
 			}
 
 			// Generate the initial problem when dependencies are done being loaded
