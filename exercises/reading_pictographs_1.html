@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html data-require="math math-format word-problems graphie">
 <head>
-	<meta charset="UTF-8" />
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 	<title>Reading pictographs 1</title>
 	<script src="../khan-exercise.js"></script>
 	<style>
@@ -47,7 +47,7 @@
 
 		<div id="most" data-weight="1">
 			<div class="vars">
-				<var id="MOST">DATA.indexOf( Math.max.apply( Math, DATA ) )</var>
+				<var id="MOST">_.indexOf( DATA, Math.max.apply( Math, DATA ) )</var>
 			</div>
 			<p class="question">Who earned the most <var>BADGE</var> badges?</p>
 			<div class="solution"><var>person( MOST + 1 )</var></div>
@@ -68,7 +68,7 @@
 
 		<div id="least" data-weight="1">
 			<div class="vars">
-				<var id="LEAST">DATA.indexOf( Math.min.apply( Math, DATA ) )</var>
+				<var id="LEAST">_.indexOf( DATA, Math.min.apply( Math, DATA ) )</var>
 			</div>
 			<p class="question">Who earned the fewest <var>BADGE</var> badges?</p>
 			<div class="solution"><var>person( LEAST + 1 )</var></div>

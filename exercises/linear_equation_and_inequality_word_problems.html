@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html data-require="math word-problems spin">
 <head>
-	<meta charset="UTF-8" />
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 	<title>Linear equation and inequality word problems</title>
 	<script src="../khan-exercise.js"></script>
 </head>
@@ -20,7 +20,7 @@
 				<p class="question">If <var>person( 1 )</var> spends <var>X</var> weeks at camp, how many skateboarding tricks will <var>he( 1 )</var> know at the end of camp?</p>
 
 				<div class="solution" data-type="multiple">
-					<span style="padding-right: 5px" class="sol"><var>R</var></span> skateboarding tricks
+					<span style="padding-right: 5px" class="sol" data-forms="integer"><var>R</var></span> skateboarding tricks
 				</div>
 
 				<div class="hints">
@@ -47,7 +47,7 @@
 				<p class="question">After <var>X</var> years, how many marathons will <var>person( 1 )</var> have run?</p>
 
 				<div class="solution" data-type="multiple">
-					<span style="padding-right: 5px" class="sol"><var>R</var></span> marathons
+					<span style="padding-right: 5px" class="sol" data-forms="integer"><var>R</var></span> marathons
 				</div>
 
 				<div class="hints">
@@ -73,9 +73,7 @@
 				<p class="problem spin">{<var>person( 1 )</var> has a coupon for shipping from Amazon.com|<var>person( 1 )</var> has decided to purchase some books from Amazon.com}. {No matter how much <var>he( 1 )</var> purchases, shipping will cost $<var>Q</var>.|Shipping is set at a flat-rate of $<var>Q</var>, regardless of the number of books purchased.}</p>
 				<p class="question">If <var>person( 1 )</var> buys <var>X</var> books for $<var>P</var> each, how much will the total bill be (assuming no sales tax)?
 
-				<div class="solution" data-type="multiple">
-					<span style="padding-right: 5px" class="sol"><var>R</var></span> dollars
-				</div>
+				<div class="solution" data-forms="dollar"><var>R</var></div>
 
 				<div class="hints">
 					<p>Cost of each book x Number of books bought + Cost of shipping = Bill total</p>
@@ -101,7 +99,7 @@
 				<p class="question">At the end of <var>X</var> months, how many articles will <var>he( 1 )</var> have had published in <i>The New York Times</i>?</p>
 
 				<div class="solution" data-type="multiple">
-					<span style="padding-right: 5px" class="sol"><var>R</var></span> articles
+					<span style="padding-right: 5px" class="sol" data-forms="integer"><var>R</var></span> articles
 				</div>
 
 				<div class="hints">
@@ -128,7 +126,7 @@
 				<p class="question">If <var>person( 1 )</var> completes <var>P</var> exercises per week for the next <var>X</var> weeks, how many exercises will <var>he( 1 )</var> have completed in total?</p>
 
 				<div class="solution" data-type="multiple">
-					<span style="padding-right: 5px" class="sol"><var>R</var></span> exercises
+					<span style="padding-right: 5px" class="sol" data-forms="integer"><var>R</var></span> exercises
 				</div>
 
 				<div class="hints">
@@ -155,7 +153,7 @@
 				<p class="question">If <var>person( 1 )</var> wants to earn more than $<var>R</var> this week, what is the minimum number of subscriptions <var>he( 1 )</var> needs to sell?</p>
 
 				<div class="solution" data-type="multiple">
-					<span style="padding-right: 5px" class="sol"><var>X</var></span> subscriptions
+					<span style="padding-right: 5px" class="sol" data-forms="integer"><var>X</var></span> subscriptions
 				</div>
 
 				<div class="hints">
@@ -180,11 +178,11 @@
 					<var id="X">ceil( (R - Q) / P )</var><!-- # levels needed -->
 				</div>
 
-				<p class="problem spin">For every level <var>person( 1 )</var> completes in <var>his( 1 )</var> favorite game, <var>he( 1 )</var> earns <var>P</var> points. At the end of each hour spent playing the game, <var>person( 1 )</var> earns a bonus of <var>Q</var>. Name already has <var>10 * randRange( 500 / 10, 5000 / 10 )</var> in the game and wants to earn more than <var>R</var> additional points in the next hour.</p>
+				<p class="problem spin">For every level <var>person( 1 )</var> completes in <var>his( 1 )</var> favorite game, <var>he( 1 )</var> earns <var>P</var> points. At the end of each hour spent playing the game, <var>he( 1 )</var> earns a bonus of <var>Q</var> points. <var>person(1)</var> already has <var>10 * randRange( 500 / 10, 5000 / 10 )</var> points in the game and wants to earn more than <var>R</var> additional points in the next hour.</p>
 				<p class="question">What is the minimum number of levels that <var>person( 1 )</var> needs to complete in the next hour to meet <var>his( 1 )</var> goal?</p>
 
 				<div class="solution" data-type="multiple">
-					<span style="padding-right: 5px" class="sol"><var>X</var></span> levels
+					<span style="padding-right: 5px" class="sol" data-forms="integer"><var>X</var></span> levels
 				</div>
 
 				<div class="hints">
@@ -209,11 +207,11 @@
 					<var id="P">ceil( ( R - Q ) / X )</var><!-- Energy needed to be stored per month -->
 				</div>
 
-				<p class="problem spin">A bear named <var>person( 1 )</var> is preparing to hibernate for the winter. <var>he( 1 )</var> has already stored up <var>Q</var> units of energy and needs to store up at least <var>R</var> total units of energy before winter.</p>
-				<p class="question">If there are <var>X</var> left before winter, what is the minimum units of energy the bear needs to store up per month?</p>
+				<p class="problem spin">A bear named <var>person( 1 )</var> is preparing to hibernate for the winter. <var>He( 1 )</var> has already stored up <var>Q</var> units of energy and needs to store up at least <var>R</var> total units of energy before winter.</p>
+				<p class="question">If there are <var>X</var> months left before winter, what is the minimum units of energy the bear needs to store up per month?</p>
 
 				<div class="solution" data-type="multiple">
-					<span style="padding-right: 5px" class="sol"><var>P</var></span> units
+					<span style="padding-right: 5px" class="sol" data-forms="integer"><var>P</var></span> units
 				</div>
 
 				<div class="hints">
@@ -239,10 +237,10 @@
 				</div>
 
 				<p class="problem spin">To move up to the maestro level in <var>his( 1 )</var> piano school, <var>person( 1 )</var> needs to master at least <var>R</var> songs. <var>person( 1 )</var> has already mastered <var>Q</var> songs.</p>
-				<p class="question">If <var>person( 1 )</var> can typically master <var>P</var> songs per month, what is the minimum amount of months it will take <var>him( 1 )</var> to move to the maestro level?</p>
+				<p class="question">If <var>person( 1 )</var> can typically master <var>P</var> songs per month, what is the minimum number of months it will take <var>him( 1 )</var> to move to the maestro level?</p>
 
 				<div class="solution" data-type="multiple">
-					<span style="padding-right: 5px" class="sol"><var>X</var></span> months
+					<span style="padding-right: 5px" class="sol" data-forms="integer"><var>X</var></span> months
 				</div>
 
 				<div class="hints">

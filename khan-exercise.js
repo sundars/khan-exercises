@@ -37,13 +37,16 @@
 var Khan = (function() {
 	function warn( message, showClose ) {
 		jQuery(function() {
+			var warningBar = jQuery( "#warning-bar" );
 			jQuery( "#warning-bar-content" ).html( message );
 			if ( showClose ) {
-				jQuery( "#warning-bar-close" ).show();
+				warningBar.addClass( "warning" )
+					  .children( "#warning-bar-close" ).show();
 			} else {
-				jQuery( "#warning-bar-close" ).hide();
+				warningBar.addClass( "error" )
+					  .children( "#warning-bar-close" ).hide();
 			}
-			jQuery( "#warning-bar" ).fadeIn( "fast" );
+			warningBar.fadeIn( "fast" );
 		});
 	}
 
@@ -202,8 +205,6 @@ var Khan = (function() {
 	},
 	issueIntro = "Remember to check the hints and double check your math. All provided information will be public. Thanks for your help!",
 
-	relatedVideosForExercise = null,
-
 	modulesLoaded = false,
 
 	gae_bingo = window.gae_bingo || { bingo: function() {} };
@@ -212,8 +213,12 @@ var Khan = (function() {
 	// it significantly harder to cheat
 	try {
 		delete window.userExercise;
-	} catch(e) {
-		window.userExercise = undefined;
+	}
+	catch(e) {} // swallow exception from IE
+	finally {
+		if (window.userExercise) {
+			window.userExercise = undefined;
+		}
 	}
 
 	// Add in the site stylesheets
@@ -240,7 +245,7 @@ var Khan = (function() {
 
 		moduleDependencies: {
 			"math": [ {
-				src: urlBase + "utils/MathJax/1.1a/MathJax.js?config=KAthJax-7018d213c4354228862b1ba15a62d3d5"
+				src: urlBase + "utils/MathJax/1.1a/MathJax.js?config=KAthJax-77111459c7d82564a705f9c5480e2c88"
 			}, "raphael" ],
 
 			// Load Raphael locally because IE8 has a problem with the 1.5.2 minified release
@@ -504,29 +509,132 @@ var Khan = (function() {
 			return actions;
 		})(),
 
-		showThumbnail: function( index ) {
-			jQuery( "#related-video-list .related-video-list li" ).each(function(i, el) {
-				if ( i === index ) {
-					jQuery( el )
-						.find( 'a.related-video-inline' ).hide().end()
-						.find( '.thumbnail' ).show();
-				}
-				else {
-					jQuery( el )
-						.find( 'a.related-video-inline' ).show().end()
-						.find( '.thumbnail' ).hide();
-				}
-			});
-		},
+		relatedVideos: {
+			videos: [],
 
-		// make a link to a related video, appending exercise ID.
-		relatedVideoHref: function(video, data) {
-			var exid_param = '';
-			data = data || userExercise;
-			if ( data ) {
-				exid_param = "?exid=" + data.exercise_model.name;
+			setVideos: function(videos) {
+				this.videos = videos || [];
+				this.render();
+			},
+
+			showThumbnail: function( index ) {
+				jQuery( "#related-video-list .related-video-list li" ).each(function(i, el) {
+					if ( i === index ) {
+						jQuery( el )
+							.find( 'a.related-video-inline' ).hide().end()
+							.find( '.thumbnail' ).show();
+					}
+					else {
+						jQuery( el )
+							.find( 'a.related-video-inline' ).show().end()
+							.find( '.thumbnail' ).hide();
+					}
+				});
+			},
+
+			// make a link to a related video, appending exercise ID.
+			makeHref: function(video, data) {
+				var exid = '';
+				data = data || userExercise;
+				if ( data ) {
+					exid = "?exid=" + data.exercise_model.name;
+				}
+				return video.relative_url + exid;
+			},
+
+			anchorElement: function( video, needComma ) {
+				var template = Templates.get("video.related-video-link");
+				return jQuery(template({
+					href: this.makeHref(video),
+					video: video,
+					separator: needComma
+				})).data('video', video);
+			},
+
+			renderInHeader: function() {
+				var container = jQuery(".related-content");
+				var jel = container.find(".related-video-list");
+				jel.empty();
+
+				_.each(this.videos, function(video, i) {
+					this.anchorElement(video, i < this.videos.length - 1)
+						.wrap("<li>").parent().appendTo(jel);
+				}, this);
+
+				container.toggle(this.videos.length > 0);
+			},
+
+			renderInSidebar: function() {
+				var container = jQuery(".related-video-box");
+				var jel = container.find(".related-video-list");
+				jel.empty();
+
+				var template = Templates.get('video.thumbnail');
+				_.each(this.videos, function(video, i) {
+					var thumbnailDiv = jQuery(template({
+						href: this.makeHref(video),
+						video: video
+					})).find('a.related-video').data('video', video).end();
+
+					var inlineLink = this.anchorElement(video)
+						.addClass("related-video-inline");
+
+					var sideBarLi = jQuery( "<li>" )
+						.append( inlineLink )
+						.append( thumbnailDiv );
+
+					if ( i > 0 ) {
+						thumbnailDiv.hide();
+					} else {
+						inlineLink.hide();
+					}
+					jel.append( sideBarLi );
+				}, this);
+
+				container.toggle(this.videos.length > 0);
+			},
+
+			hookup: function() {
+				// make caption slide up over the thumbnail on hover
+				var captionHeight = 45;
+				var marginTop = 23;
+				// queue:false to make sure these run simultaneously
+				var options = {duration: 150, queue: false};
+				jQuery(".related-video-box")
+					.delegate(".thumbnail", "mouseenter mouseleave", function(e) {
+						var el = $(e.currentTarget);
+						if (e.type == "mouseenter") {
+							el.	find( ".thumbnail_label" ).animate(
+									{ marginTop: marginTop },
+									options)
+								.end()
+								.find( ".thumbnail_teaser" ).animate(
+									{ height: captionHeight },
+									options)
+								.end();
+						} else {
+							el .find( ".thumbnail_label" ).animate(
+									{ marginTop: marginTop + captionHeight },
+									options)
+								.end()
+								.find( ".thumbnail_teaser" ).animate(
+									{ height: 0 },
+									options)
+								.end();
+						}
+					});
+			},
+
+			render: function() {
+				// don't try to render if templates aren't present (dev mode)
+				if (!window.Templates) return;
+
+				this.renderInSidebar();
+				// Review queue overlaps with the content here
+				if ( !reviewMode ) {
+					this.renderInHeader();
+				}
 			}
-			return video.relative_url + exid_param;
 		},
 
 		showSolutionButtonText: function() {
@@ -846,7 +954,9 @@ var Khan = (function() {
 	function switchToExercise( exid ) {
 		exerciseName = exid;
 
-		setProblemNum( getData().total_done + 1 );
+		var newUserExercise = getData();
+
+		setProblemNum( newUserExercise.total_done + 1 );
 
 		// Get all problems of this exercise type...
 		var problems = exercises.filter(function() {
@@ -862,6 +972,9 @@ var Khan = (function() {
 		var title = document.title;
 		document.title = getDisplayNameFromId( exid ) + " " +
 			title.slice( jQuery.inArray("|", title) );
+
+		// update related videos
+		Khan.relatedVideos.setVideos(newUserExercise.exercise_model.related_videos);
 	}
 
 	function makeProblem( id, seed ) {
@@ -975,11 +1088,21 @@ var Khan = (function() {
 			var exerciseStyleElem = jQuery( "head #exercise-inline-style" );
 
 			// Clear old exercise style definitions
-			exerciseStyleElem.empty();
+			if ( exerciseStyleElem.length && exerciseStyleElem[0].styleSheet ) {
+				// IE refuses to modify the contents of <style> the normal way
+				exerciseStyleElem[0].styleSheet.cssText = "";
+			} else {
+				exerciseStyleElem.empty();
+			}
 
 			// Then add rules specific to this exercise.
 			jQuery.each( exercise.data("style"), function( i, styleContents ) {
-				exerciseStyleElem.append( styleContents );
+				if ( exerciseStyleElem.length && exerciseStyleElem[0].styleSheet ) {
+					// IE refuses to modify the contents of <style> the normal way
+					exerciseStyleElem[0].styleSheet.cssText = exerciseStyleElem[0].styleSheet.cssText + styleContents;
+				} else {
+					exerciseStyleElem.append( styleContents );
+				}
 			});
 		}
 
@@ -1130,6 +1253,10 @@ var Khan = (function() {
 		}
 
 		if (typeof userExercise !== "undefined" && userExercise.read_only) {
+			if (!userExercise.current) {
+				warn("This exercise may have changed since it was completed", true);
+			}
+
 			var timelineEvents, timeline;
 
 			var timelinecontainer = jQuery( "<div id='timelinecontainer'>" )
@@ -1139,15 +1266,26 @@ var Khan = (function() {
 							</div>" )
 				.insertBefore( "#extras" );
 
-			if (getData().total_done === 0) {
-				jQuery( '#previous-problem' )
-					.addClass( 'disabled' )
+			jQuery.fn.disable = function() {
+				this.addClass( 'disabled' )
 					.css( {
-						cursor: 'default !important',
-						top: '0',
-						color: '#333 !important'
+					cursor: 'default !important'
 					} )
 					.data( 'disabled', true );
+				return this;
+			}
+
+			jQuery.fn.enable = function() {
+				this.removeClass( 'disabled' )
+					.css( {
+					cursor: 'pointer'
+					} )
+					.data( 'disabled', false );
+				return this;
+			}
+
+			if (getData().total_done === 0) {
+				jQuery( '#previous-problem' ).disable();
 			}
 
 			timeline = jQuery( "<div id='timeline'>" ).appendTo( timelinecontainer );
@@ -1264,38 +1402,32 @@ var Khan = (function() {
 			jQuery( '#solutionarea' ).css( 'background-color', jQuery( '#answercontent' ).css( 'background-color' ) );
 
 			jQuery.fn.scrubber = function() {
-				var scrubber1 = jQuery( '#scrubber1' ),
-						scrubber2 = jQuery( '#scrubber2' );
-
-				scrubber1 = scrubber1.length ? scrubber1 : jQuery("<div id='scrubber1'>").appendTo(document.body);
-				scrubber2 = scrubber2.length ? scrubber2 : jQuery("<div id='scrubber2'>").appendTo(document.body);
-
-				// triangle top of scrubber
-				scrubber1.css( {
+				// create triangular scrubbers above and below current selection
+				var timeline = jQuery( '#timeline' ),
+					scrubber1 = jQuery( '#scrubber1' ),
+					scrubber2 = jQuery( '#scrubber2' ),
+					scrubberCss = {
 					display: 'block',
 					width: '0',
 					height: '0',
 					'border-left': '6px solid transparent',
 					'border-right': '6px solid transparent',
-					'border-bottom': '6px solid #888',
 					position: 'absolute',
-					top: (timelinecontainer.offset().top + timelinecontainer.height() - 6) + 'px',
-					left: (this.offset().left + this.width()/2) + 'px',
-					bottom: '0'
-				} );
+					left: (timeline.scrollLeft() + this.position().left + this.outerWidth()/2 + 2) + 'px'
+					};
 
-				// rectangle bottom of scrubber
-				scrubber2.css( {
-					display: 'block',
-					width: '0',
-					height: '0',
+				scrubber1 = scrubber1.length ? scrubber1 : jQuery("<div id='scrubber1'>").appendTo( timeline );
+				scrubber2 = scrubber2.length ? scrubber2 : jQuery("<div id='scrubber2'>").appendTo( timeline );
+
+				scrubber1.css( jQuery.extend( {}, scrubberCss, {
 					'border-bottom': '6px solid #888',
-					'border-left': '6px solid #888',
-					'border-right': '6px solid #888',
-					position: 'absolute',
-					top: (scrubber1.offset().top + 7) + 'px',
-					left: scrubber1.offset().left + 'px'
-				} );
+					bottom: '0'
+				}) );
+
+				scrubber2.css( jQuery.extend( {}, scrubberCss, {
+					'border-top': '6px solid #888',
+					top: '0'
+				}) );
 
 				return this;
 			};
@@ -1304,12 +1436,12 @@ var Khan = (function() {
 			MathJax.Hub.Queue( function() {
 				var maxHeight = 0;
 				timelineEvents.children().each( function() {
-					maxHeight = Math.max( maxHeight, jQuery( this ).height() );
+					maxHeight = Math.max( maxHeight, jQuery( this ).outerHeight(true) );
 				});
 
 				if (maxHeight > timelinecontainer.height()) {
-					timelinecontainer.height( maxHeight + 16 );
-					timeline.height( maxHeight + 16 );
+					timelinecontainer.height( maxHeight );
+					timeline.height( maxHeight );
 				}
 			} );
 
@@ -1318,7 +1450,7 @@ var Khan = (function() {
 
 				var thisHintArea, thisProblem,
 					hintNum = jQuery( '#timeline-events .user-activity:lt('+(i+1)+')' )
-								.filter('.hint-activity').length - 1,
+							.filter('.hint-activity').length - 1,
 					// Bring the currently focused panel as close to the middle as possible
 					itemOffset = thisSlide.position().left,
 					itemMiddle = itemOffset + thisSlide.width() / 2,
@@ -1371,7 +1503,8 @@ var Khan = (function() {
 
 			var activate = function( slideNum ) {
 				var hint, thisState,
-					thisSlide = states.eq( slideNum );
+					thisSlide = states.eq( slideNum ),
+					fadeTime = 150;
 
 				// All content for this state has been built before
 				if (statelist[slideNum]) {
@@ -1379,23 +1512,23 @@ var Khan = (function() {
 
 					timeline.animate({
 						scrollLeft: thisState.scroll
-					}, 150, function() {
+					}, fadeTime, function() {
 						thisState.slide.scrubber();
 					});
 
 					if (slideNum < firstHintIndex) {
-						hintRemainder.fadeOut( 150 );
+						hintRemainder.fadeOut( fadeTime );
 						hintButton.val( "I'd like a hint" );
 					} else if (slideNum >= lastHintIndex) {
 						if (states.eq( lastHintIndex ).data( 'hint' ) < hints.length) {
-							hintRemainder.fadeOut( 150 );
+							hintRemainder.fadeOut( fadeTime );
 						}
 					} else {
 						hintButton.val( "I'd like another hint" );
 
 						hintRemainder
 							.text( (totalHints - thisState.hintNum) + " remaining" )
-							.fadeIn( 150 );
+							.fadeIn( fadeTime );
 					}
 
 					jQuery( '#workarea' ).remove();
@@ -1403,7 +1536,7 @@ var Khan = (function() {
 					jQuery( '#problemarea' ).append( thisState.problem ).append( thisState.hintArea );
 
 					if (thisSlide.data( 'guess' )) {
-						solutionarea.effect( 'highlight', {}, 200 );
+						solutionarea.effect( 'highlight', {}, fadeTime );
 
 						// If there is a guess we show it as if it was filled in by the user
 						validator.showGuess( thisSlide.data( 'guess' ) );
@@ -1415,15 +1548,19 @@ var Khan = (function() {
 					if (slideNum > 0 && (thisState.hintNum > statelist[slideNum-1].hintNum)) {
 						jQuery( '#hintsarea' ).children().each( function( index, elem ) {
 							if (index > previousHintNum) {
-								jQuery( elem ).effect( 'highlight', {}, 200 );
+								jQuery( elem ).effect( 'highlight', {}, fadeTime );
 							}
 						} );
 
 						previousHintNum = thisState.hintNum;
 					}
 
+					jQuery( '#previous-step, #next-step' ).enable();
 					if (slideNum === 0) {
 						previousHintNum = -1;
+						jQuery( '#previous-step' ).disable();
+					} else if (slideNum === numSlides - 1) {
+						jQuery( '#next-step' ).disable();
 					}
 				}
 			};
@@ -1797,7 +1934,6 @@ var Khan = (function() {
 	}
 
 	function prepareSite() {
-
 		// Set exercise title
 		jQuery("#current-exercise").text( typeof userExercise !== "undefined" && userExercise.exercise_model ?
 			userExercise.exercise_model.display_name : document.title );
@@ -1817,6 +1953,8 @@ var Khan = (function() {
 
 		if ( reviewMode ) {
 			enterReviewMode();
+		} else {
+			jQuery( "#streak-bar-container" ).show();
 		}
 
 		jQuery( "#answer_area" ).adhere( {
@@ -2582,6 +2720,15 @@ var Khan = (function() {
 				Khan.scratchpad.show();
 			}
 		}
+
+		Khan.relatedVideos.hookup();
+		if (userExercise) {
+			Khan.relatedVideos.setVideos(userExercise.exercise_model.related_videos);
+		}
+
+		if (window.ModalVideo) {
+			ModalVideo.hookup();
+		}
 	}
 
 	function setProblemNum( num ) {
@@ -2819,99 +2966,7 @@ var Khan = (function() {
 		jQuery(".streak-bar").toggleClass("proficient", data.progress >= 1.0);
 
 		drawExerciseState( data );
-
-		var videos = data && data.exercise_model.related_videos;
-		if ( videos && videos.length && ( jQuery(".related-video-list").is(":empty")
-					|| relatedVideosForExercise !== data.exercise ) &&
-			typeof ModalVideo !== "undefined"
-		) {
-			displayRelatedVideos(videos);
-			ModalVideo && relatedVideosForExercise === null && ModalVideo.hookup();
-			relatedVideosForExercise = data.exercise;
-		}
 	}
-
-	function displayRelatedVideos( videos ) {
-		function relatedVideoAnchorElement( video, needComma ) {
-			var template = Templates.get("video.related-video-link");
-			return jQuery(template({
-				href: Khan.relatedVideoHref(video),
-				video: video,
-				separator: needComma
-			})).data('video', video);
-		}
-
-		function displayRelatedVideoInHeader( i, video ) {
-			var needComma = i < videos.length - 1;
-			var li = jQuery( "<li>" ).append( relatedVideoAnchorElement(video, needComma) );
-			jQuery( ".related-content > .related-video-list" ).append( li ).show();
-		}
-
-		function displayRelatedVideoInSidebar( i, video ) {
-			var template = Templates.get('video.thumbnail');
-			var thumbnailDiv = jQuery(template({
-				href: Khan.relatedVideoHref(video),
-				video: video
-			})).find('a.related-video').data('video', video).end();
-
-			var inlineLink = relatedVideoAnchorElement(video)
-				.addClass("related-video-inline");
-
-			var sideBarLi = jQuery( "<li>" )
-				.append( inlineLink )
-				.append( thumbnailDiv );
-
-			if ( i > 0 ) {
-				thumbnailDiv.hide();
-			} else {
-				inlineLink.hide();
-			}
-			jQuery( "#related-video-list .related-video-list" ).append( sideBarLi );
-		}
-
-		if ( window.Templates ) {
-			jQuery( ".related-video-list" ).empty();
-
-			jQuery.each( videos, displayRelatedVideoInSidebar );
-			jQuery( ".related-video-box" ).show();
-
-			// Review queue overlaps with the content here
-			if ( !reviewMode ) {
-				jQuery.each( videos, displayRelatedVideoInHeader );
-				jQuery( ".related-content" ).show();
-			}
-		}
-
-		// make caption slide up over the thumbnail on hover
-		var captionHeight = 45;
-		var defaultMarginTop = 23;
-		// queue:false to make sure these run simultaneously
-		var animationOptions = {duration: 150, queue: false};
-		jQuery( ".thumbnail" ).hover(
-			function() {
-				jQuery( this )
-					.find( ".thumbnail_label" ).animate(
-						{ marginTop: defaultMarginTop },
-						animationOptions
-					).end()
-					.find( ".thumbnail_teaser" ).animate(
-						{ height: captionHeight },
-						animationOptions
-					);
-			},
-			function() {
-				jQuery( this )
-					.find( ".thumbnail_label" ).animate(
-						{ marginTop: defaultMarginTop + captionHeight },
-						animationOptions
-					).end()
-					.find( ".thumbnail_teaser" ).animate(
-						{ height: 0 },
-						animationOptions
-					);
-			}
-		);
-	};
 
 	// Grab the cached UserExercise data from local storage
 	function getData() {
@@ -2949,6 +3004,8 @@ var Khan = (function() {
 		var rootName = self.data( "rootName" );
 
 		remoteCount++;
+
+		// Packing occurs on the server but at the same "exercises/" URL
 		jQuery.get( urlBase + "exercises/" + name + ".html", function( data, status, xhr ) {
 			var match, newContents;
 
@@ -2957,9 +3014,6 @@ var Khan = (function() {
 				Khan.error( "Error loading exercise from file " + name + ".html: " + xhr.status + " " + xhr.statusText );
 				return;
 			}
-
-			// Wrap everything in <pre> tags to keep IE from removing newlines
-			data = data.replace( /(<body[^>]*>)/, "$1<pre>" ).replace( "</body>", "</pre></body>" );
 
 			newContents = jQuery( data ).find( "div.exercise" );
 
