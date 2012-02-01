@@ -2,7 +2,7 @@
 <html data-require="math math-format">
 <head>
 	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-	<title>Solving quadratics by factoring</title>
+	<title>Solving quadratics by factoring 2</title>
 	<script src="../khan-exercise.js"></script>
 	<style type="text/css">
 		#answer_area input[type=text] {
@@ -17,12 +17,11 @@
 			<var id="A">randRangeNonZero( -10, 10 )</var>
 			<var id="B">randRangeNonZero( -10, 10 )</var>
 		</div>
-		<!--<var id="SQUARE">randRange(1,6)</var>-->
-		<var id="SQUARE">1</var>
+		<var id="SQUARE">randRange(1,6)</var>
 	</div>
 
 	<div class="problems">
-		<div id="original">
+		<div id="original" data-weight="2">
 			<div class="vars">
 				<var id="CONSTANT">SQUARE*A*B</var>
 				<var id="SIMPLECONSTANT">A*B</var>
@@ -63,7 +62,7 @@
 		</div>
 
 
-		<div id="one-root" data-type="original">
+		<div id="one-root" data-type="original" data-weight="1">
 			<div class="vars">
 				<var id="CONSTANT">SQUARE * A * A</var>
 				<var id="SIMPLECONSTANT">A * A</var>
@@ -95,7 +94,7 @@
 	</div>
 
 	<div class="hints">
-		<div>
+		<div data-if="SQUARE === 1">
 			<p>The function intersects the <code>x</code>-axis where <code>f(x) = 0</code>, so solve the equation:</p>
 			<p><code>
 				\qquad
@@ -104,12 +103,24 @@
 				<var>plus( "\\color{" + GREEN + "}{" + LINEAR + "}x" )</var>
 				<var>CONSTANT &gt;= 0 ? "+" : ""</var>
 				<var>plus( "\\color{" + BLUE + "}{" + CONSTANT + "}" )</var>
-				= 0</code></p>
+				= 0
+			</code></p>
+		</div>
+		<div data-else>
+			<p>The function intersects the <code>x</code>-axis where <code>f(x) = 0</code>, so solve the equation:</p>
+			<p><code>\qquad <var>plus( SQUARE + "x^2", LINEAR + "x", CONSTANT )</var> = 0</code></p>
 		</div>
 
 		<div data-if="SQUARE > 1">
-			<p>Dividing both sides by <var>SQUARE</var> gives:</p>
-			<p><code>x^2 + <var> plus(SIMPLELINEAR + "x")</var> + <var>SIMPLECONSTANT</var>=0</code></p>
+			<p>Dividing both sides by <code><var>SQUARE</var></code> gives:</p>
+			<p><code>
+				\qquad x^2
+				<var>SIMPLELINEAR &gt;= 0 ? "+" : ""</var>
+				<var>plus( "\\color{" + GREEN + "}{" + SIMPLELINEAR + "}x" )</var>
+				<var>SIMPLECONSTANT &gt;= 0 ? "+" : ""</var>
+				<var>plus( "\\color{" + BLUE + "}{" + SIMPLECONSTANT + "}" )</var>
+				= 0
+			</code></p>
 		</div>
 
 		<p>
